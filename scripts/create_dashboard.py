@@ -75,14 +75,34 @@ def main():
                       / SUM(total_expected_loss) * 100, 1) AS pct_loss_zone3
             FROM {fqn_gold}.flood_concentration""")
 
-    ds_map = ds("ds_map", "Concentration Map",
+    ds_map = ds("ds_map", "Concentration map",
         f"""SELECT
                 postcode_district, region, flood_zone, flood_score,
                 centroid_lat, centroid_lng, policy_count,
                 ROUND(total_exposure / 1e6, 1)      AS exposure_m,
-                ROUND(total_expected_loss / 1e3, 1) AS expected_loss_k,
-                nearest_watercourse
+                ROUND(total_expected_loss / 1e3, 1) AS expected_loss_k
             FROM {fqn_gold}.flood_concentration""")
+
+    ds_concentration_grid = ds("ds_concentration_grid", "Region x Zone heatmap",
+        f"""SELECT
+                region,
+                CASE flood_zone
+                    WHEN '1' THEN '1 Low' WHEN '2' THEN '2 Medium'
+                    WHEN '3a' THEN '3a High' WHEN '3b' THEN '3b Very High'
+                END AS zone_label,
+                ROUND(SUM(total_exposure) / 1e6, 0) AS exposure_m
+            FROM {fqn_gold}.flood_concentration
+            GROUP BY region, flood_zone
+            ORDER BY region, flood_zone""")
+
+    ds_top_district_bar = ds("ds_top_district_bar", "Top 25 districts (bar)",
+        f"""SELECT
+                postcode_district || ' (' || flood_zone || ')' AS district_label,
+                postcode_district, region, flood_zone, flood_score,
+                ROUND(total_exposure / 1e6, 1) AS exposure_m
+            FROM {fqn_gold}.flood_concentration
+            ORDER BY total_exposure DESC
+            LIMIT 25""")
 
     ds_top10 = ds("ds_top10", "Top accumulations",
         f"""SELECT
@@ -94,8 +114,7 @@ def main():
                 ROUND(total_expected_loss / 1e3, 1) AS expected_loss_k,
                 nearest_watercourse
             FROM {fqn_gold}.flood_concentration
-            ORDER BY total_exposure DESC
-            LIMIT 15""")
+            ORDER BY total_exposure DESC""")
 
     ds_top10_loss = ds("ds_top10_loss", "Top by expected loss",
         f"""SELECT
@@ -158,42 +177,76 @@ def main():
                      "frame": {"showTitle": True, "title": title}},
         }
 
-    def map_widget(dataset, lat, lng, size, color, title, label_field=None):
-        wid = uid()
+    def map_widget(dataset, lat, lng, color, title, label_field=None):
+        # Canonical symbol-map shape (matches Lakeview UI export):
+        # - version 2
+        # - encodings.coordinates is a nested {latitude, longitude} object
+        # - color is top-level
         fields = [
             {"name": lat,   "expression": f"`{lat}`"},
             {"name": lng,   "expression": f"`{lng}`"},
-            {"name": size,  "expression": f"`{size}`"},
             {"name": color, "expression": f"`{color}`"},
         ]
         if label_field:
             fields.append({"name": label_field, "expression": f"`{label_field}`"})
         enc = {
-            "latitude":  {"fieldName": lat,  "scale": {"type": "quantitative"}, "displayName": "lat"},
-            "longitude": {"fieldName": lng,  "scale": {"type": "quantitative"}, "displayName": "lng"},
-            "size":      {"fieldName": size, "scale": {"type": "quantitative"}, "displayName": size},
-            "color":     {"fieldName": color, "scale": {"type": "quantitative",
-                                                        "scheme": {"name": "redyellow", "reverse": True}},
-                          "displayName": color},
+            "coordinates": {
+                "latitude":  {"fieldName": lat, "displayName": "lat"},
+                "longitude": {"fieldName": lng, "displayName": "lng"},
+            },
+            "color": {
+                "fieldName": color,
+                "scale": {"type": "quantitative",
+                          "scheme": {"name": "redyellow", "reverse": True}},
+                "displayName": color,
+            },
         }
         if label_field:
             enc["label"] = {"fieldName": label_field, "displayName": label_field}
         return {
-            "name": wid,
+            "name": uid(),
             "queries": [{"name": "main_query", "query": {
                 "datasetName": dataset, "fields": fields, "disaggregated": True}}],
-            "spec": {"version": 3, "widgetType": "symbol-map", "encodings": enc,
+            "spec": {"version": 2, "widgetType": "symbol-map",
+                     "encodings": enc, "mark": {"opacity": 0.7},
+                     "frame": {"showTitle": True, "title": title}},
+        }
+
+    def heatmap_widget(dataset, x, y, color, title):
+        # Same shape as the working heatmap in solvency-ii-qrt-demo-pnc.
+        color_name = f"sum_{color}"
+        return {
+            "name": uid(),
+            "queries": [{"name": "main_query", "query": {
+                "datasetName": dataset,
+                "fields": [
+                    {"name": x, "expression": f"`{x}`"},
+                    {"name": y, "expression": f"`{y}`"},
+                    {"name": color_name, "expression": f"SUM(`{color}`)"},
+                ],
+                "disaggregated": False,
+            }}],
+            "spec": {"version": 3, "widgetType": "heatmap",
+                     "encodings": {
+                         "x": {"fieldName": x, "scale": {"type": "categorical"}, "displayName": x},
+                         "y": {"fieldName": y, "scale": {"type": "categorical"}, "displayName": y},
+                         "color": {"fieldName": color_name, "scale": {"type": "quantitative"}, "displayName": color},
+                     },
                      "frame": {"showTitle": True, "title": title}},
         }
 
     def bar_widget(dataset, x, y, title, color=None, sort=None):
+        # Aggregated shape — Lakeview v3 bar widgets need an aggregation
+        # expression even when the underlying data is already pre-aggregated.
+        # SUM of pre-aggregated values just returns those values intact.
+        y_name = f"sum_{y}"
         fields = [
-            {"name": x, "expression": f"`{x}`"},
-            {"name": y, "expression": f"`{y}`"},
+            {"name": x,      "expression": f"`{x}`"},
+            {"name": y_name, "expression": f"SUM(`{y}`)"},
         ]
         enc = {
-            "x": {"fieldName": x, "scale": {"type": "categorical"}, "displayName": x},
-            "y": {"fieldName": y, "scale": {"type": "quantitative"}, "displayName": y},
+            "x": {"fieldName": x,      "scale": {"type": "categorical"},   "displayName": x},
+            "y": {"fieldName": y_name, "scale": {"type": "quantitative"}, "displayName": y},
         }
         if sort:
             enc["x"]["scale"]["sort"] = {"by": sort}
@@ -203,7 +256,7 @@ def main():
         return {
             "name": uid(),
             "queries": [{"name": "main_query", "query": {
-                "datasetName": dataset, "fields": fields, "disaggregated": True}}],
+                "datasetName": dataset, "fields": fields, "disaggregated": False}}],
             "spec": {"version": 3, "widgetType": "bar", "encodings": enc,
                      "frame": {"showTitle": True, "title": title}},
         }
@@ -212,7 +265,11 @@ def main():
         fields = [{"name": c[0], "expression": f"`{c[0]}`"} for c in columns]
         col_specs = []
         for c in columns:
-            spec = {"fieldName": c[0], "title": c[1], "type": "string", "displayAs": "string"}
+            # `displayName` is required for Lakeview's editor to recognise the
+            # column as field-bound; without it, the editor renders the
+            # "describe a viz" empty-widget prompt.
+            spec = {"fieldName": c[0], "title": c[1], "displayName": c[1],
+                    "type": "string", "displayAs": "string"}
             if len(c) > 2 and c[2] == "number":
                 spec["type"] = "float"
                 spec["displayAs"] = "number"
@@ -258,10 +315,23 @@ def main():
         # Map — the centrepiece
         lay(map_widget(ds_map,
                        lat="centroid_lat", lng="centroid_lng",
-                       size="exposure_m", color="flood_score",
-                       title="UK Concentration Map — bubble = exposure (£m), colour = flood score (0–100)",
-                       label_field="postcode_district"),
-            pos(0, 3, 6, 8)),
+                       color="flood_score",
+                       label_field="postcode_district",
+                       title="UK Concentration Map — colour = flood score (red = highest)"),
+            pos(0, 3, 6, 6)),
+
+        # Heatmap — region x zone, color = total exposure (a useful complement to the map)
+        lay(heatmap_widget(ds_concentration_grid,
+                           x="zone_label", y="region", color="exposure_m",
+                           title="Exposure by region × flood zone (£m)"),
+            pos(0, 9, 3, 4)),
+
+        # Top 25 districts by exposure — coloured by flood zone
+        lay(bar_widget(ds_top_district_bar,
+                       x="district_label", y="exposure_m",
+                       title="Top 25 districts by exposure (£m)",
+                       color="flood_zone", sort="y-reversed"),
+            pos(3, 9, 3, 4)),
 
         # Top-10 accumulation table
         lay(table_widget(ds_top10,
@@ -275,21 +345,21 @@ def main():
                           ("expected_loss_k",   "Expected Loss (£k)", "number", "#,##0.0"),
                           ("nearest_watercourse","Watercourse")],
                          "Top 15 Districts by Exposure"),
-            pos(0, 11, 6, 5)),
+            pos(0, 13, 6, 5)),
 
         # Region + zone splits
         lay(bar_widget(ds_region, "region", "exposure_m",
                        "Exposure by Region (£m)", sort="y-reversed"),
-            pos(0, 16, 3, 4)),
+            pos(0, 18, 3, 4)),
         lay(bar_widget(ds_zone_mix, "zone_label", "exposure_m",
                        "Exposure by Flood Zone (£m)"),
-            pos(3, 16, 3, 4)),
+            pos(3, 18, 3, 4)),
 
         # Scenario stress
         lay(md_widget("## Scenario Stress\n"
                       "Pre-computed loss under named flood scenarios. Each row applies a severity "
                       "multiplier to the priced expected_loss for the affected districts."),
-            pos(0, 20, 6, 1)),
+            pos(0, 22, 6, 1)),
 
         lay(table_widget(ds_scenarios,
                          [("scenario",            "Scenario"),
@@ -301,11 +371,11 @@ def main():
                           ("scenario_loss_m",     "Scenario Loss (£m)", "number", "#,##0.00"),
                           ("loss_to_premium_pct", "Loss/Premium %", "number", "0.0")],
                          "Named Flood Scenarios"),
-            pos(0, 21, 6, 4)),
+            pos(0, 23, 6, 4)),
 
         lay(bar_widget(ds_scenarios, "scenario", "scenario_loss_m",
                        "Scenario Loss (£m) — sized by severity × affected exposure", sort="y-reversed"),
-            pos(0, 25, 6, 4)),
+            pos(0, 27, 6, 4)),
     ]
 
     serialized = {
