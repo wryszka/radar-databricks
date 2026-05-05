@@ -1,0 +1,32 @@
+# Full demo pipeline — runs setup → stage 1 → stage 2 → stage 3.5 → stage 4 in
+# sequence. Use `databricks bundle run run_full_demo` for one-shot rebuild.
+
+resources:
+  jobs:
+    run_full_demo:
+      name: "Run Full Demo Pipeline (setup → bronze → silver → radar sim → gold)"
+      parameters:
+        - name: catalog_name
+          default: ${var.catalog_name}
+        - name: bronze_schema
+          default: ${var.bronze_schema}
+        - name: silver_schema
+          default: ${var.silver_schema}
+        - name: gold_schema
+          default: ${var.gold_schema}
+
+      tasks:
+        - task_key: full_pipeline
+          notebook_task:
+            notebook_path: ../src/00_setup/run_full_demo.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              bronze_schema: ${var.bronze_schema}
+              silver_schema: ${var.silver_schema}
+              gold_schema: ${var.gold_schema}
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "5"

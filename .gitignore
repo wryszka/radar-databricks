@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.databricks/
+*.bak
+.DS_Store
+.idea/
+.vscode/
+*.swp

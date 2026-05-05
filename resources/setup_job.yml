@@ -1,0 +1,43 @@
+# One-time setup — creates catalog + bronze/silver/gold schemas, applies metadata.
+
+resources:
+  jobs:
+    setup_demo:
+      name: "Setup — Radar × Databricks Demo"
+      parameters:
+        - name: catalog_name
+          default: ${var.catalog_name}
+        - name: bronze_schema
+          default: ${var.bronze_schema}
+        - name: silver_schema
+          default: ${var.silver_schema}
+        - name: gold_schema
+          default: ${var.gold_schema}
+
+      tasks:
+        - task_key: setup
+          notebook_task:
+            notebook_path: ../src/00_setup/setup.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              bronze_schema: ${var.bronze_schema}
+              silver_schema: ${var.silver_schema}
+              gold_schema: ${var.gold_schema}
+          environment_key: default
+
+        - task_key: apply_metadata
+          depends_on:
+            - task_key: setup
+          notebook_task:
+            notebook_path: ../src/00_setup/apply_metadata.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              bronze_schema: ${var.bronze_schema}
+              silver_schema: ${var.silver_schema}
+              gold_schema: ${var.gold_schema}
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "5"

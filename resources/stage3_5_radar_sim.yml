@@ -1,0 +1,27 @@
+# Stage 3.5 — Radar Simulator (DEMO AID — not production).
+# In production, replace with the actual Radar pricing integration.
+# Reads silver.priced_book_input → writes silver.priced_book_output.
+
+resources:
+  jobs:
+    stage3_5_radar_simulator:
+      name: "Stage 3.5 — Radar Simulator (demo aid)"
+      parameters:
+        - name: catalog_name
+          default: ${var.catalog_name}
+        - name: silver_schema
+          default: ${var.silver_schema}
+
+      tasks:
+        - task_key: radar_simulator
+          notebook_task:
+            notebook_path: ../src/03_radar_simulator/99_radar_simulator.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              silver_schema: ${var.silver_schema}
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "5"

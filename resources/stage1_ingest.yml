@@ -1,0 +1,33 @@
+# Stage 1 — Ingest: synthesise + land bronze.property_book and bronze.flood_overlay.
+
+resources:
+  jobs:
+    stage1_ingest:
+      name: "Stage 1 — Ingest (bronze)"
+      parameters:
+        - name: catalog_name
+          default: ${var.catalog_name}
+        - name: bronze_schema
+          default: ${var.bronze_schema}
+
+      tasks:
+        - task_key: generate_property_book
+          notebook_task:
+            notebook_path: ../src/01_bronze/01_generate_property_book.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              bronze_schema: ${var.bronze_schema}
+          environment_key: default
+
+        - task_key: generate_flood_overlay
+          notebook_task:
+            notebook_path: ../src/01_bronze/02_generate_flood_overlay.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              bronze_schema: ${var.bronze_schema}
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "5"

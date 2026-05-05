@@ -1,0 +1,28 @@
+# Stage 2 — Enrich: geospatial join → silver.priced_book_input (input to Radar).
+
+resources:
+  jobs:
+    stage2_enrich:
+      name: "Stage 2 — Enrich (silver.priced_book_input)"
+      parameters:
+        - name: catalog_name
+          default: ${var.catalog_name}
+        - name: bronze_schema
+          default: ${var.bronze_schema}
+        - name: silver_schema
+          default: ${var.silver_schema}
+
+      tasks:
+        - task_key: priced_book_input
+          notebook_task:
+            notebook_path: ../src/02_silver/01_priced_book_input.sql
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              bronze_schema: ${var.bronze_schema}
+              silver_schema: ${var.silver_schema}
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "5"

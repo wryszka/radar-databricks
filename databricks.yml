@@ -1,0 +1,46 @@
+bundle:
+  name: radar-databricks
+
+variables:
+  catalog_name:
+    description: Unity Catalog name for all demo tables
+    default: radar_databricks_demo
+  bronze_schema:
+    description: Schema for raw ingest tables
+    default: bronze
+  silver_schema:
+    description: Schema for enriched / Radar-output tables
+    default: silver
+  gold_schema:
+    description: Schema for portfolio aggregations + scenario results
+    default: gold
+
+# ──────────────────────────────────────────────────────────────────────────────
+# WORKSPACE: To deploy, set host + profile below or pass on the CLI:
+#   databricks bundle deploy -p YOUR_PROFILE --var="catalog_name=your_catalog"
+#
+# CATALOG: The setup notebook attempts CREATE CATALOG IF NOT EXISTS. If you
+#          don't have permission to create catalogs, point catalog_name to one
+#          you already own (e.g. lr_serverless_aws_us_catalog).
+# ──────────────────────────────────────────────────────────────────────────────
+
+workspace:
+  # host: https://YOUR-WORKSPACE.cloud.databricks.com
+  # profile: DEFAULT
+
+sync:
+  exclude:
+    - "*.bak"
+    - .venv/
+    - __pycache__/
+
+targets:
+  dev:
+    mode: development
+    default: true
+
+  prod:
+    mode: production
+
+include:
+  - resources/*.yml
