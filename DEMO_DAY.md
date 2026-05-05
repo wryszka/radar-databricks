@@ -9,6 +9,7 @@ click order, recovery commands.
 | Asset | URL |
 |---|---|
 | **Dashboard — Flood Concentration View** | https://fevm-lr-serverless-aws-us.cloud.databricks.com/dashboardsv3/01f1487b844416c88218cb82d3be5fea |
+| **Genie — Flood Portfolio Q&A** | https://fevm-lr-serverless-aws-us.cloud.databricks.com/genie/rooms/01f1487cc0bc1af1b06e394546b95181 |
 | **Catalog Explorer (radar_gold)** | https://fevm-lr-serverless-aws-us.cloud.databricks.com/explore/data/lr_serverless_aws_us_catalog/radar_gold |
 | **Catalog Explorer (radar_silver)** | https://fevm-lr-serverless-aws-us.cloud.databricks.com/explore/data/lr_serverless_aws_us_catalog/radar_silver |
 | **Catalog Explorer (radar_bronze)** | https://fevm-lr-serverless-aws-us.cloud.databricks.com/explore/data/lr_serverless_aws_us_catalog/radar_bronze |
@@ -24,66 +25,42 @@ click order, recovery commands.
 
 ---
 
-## One-time setup of the Genie space (~1 minute)
+## Genie space — already deployed
 
-The Lakeview dashboard exists. The Genie space needs a one-time manual
-creation — the public Genie API doesn't yet support full programmatic
-setup with sample questions.
+The Genie space is live at the URL above. It carries:
+- 5 tables: `flood_concentration`, `scenario_results`, `scenario_district_detail`,
+  `priced_book_output`, `flood_overlay`
+- 9 curated sample questions (the headline three plus backup phrasings)
+- 5 general instructions (district-level table, scenario_results, flood zones,
+  money formatting, geographic key)
 
-1. Open https://fevm-lr-serverless-aws-us.cloud.databricks.com → **Genie** in the sidebar
-2. Click **+ New** → name: **Flood Portfolio Q&A**
-3. Select warehouse: `Serverless` (`ab79eced8207d29b`)
-4. **Add tables** — paste:
-   ```
-   lr_serverless_aws_us_catalog.radar_gold.flood_concentration
-   lr_serverless_aws_us_catalog.radar_gold.scenario_results
-   lr_serverless_aws_us_catalog.radar_silver.priced_book_output
-   lr_serverless_aws_us_catalog.radar_bronze.flood_overlay
-   ```
-5. **Description** (paste verbatim):
-   > Flood Portfolio Q&A — UK home insurance flood concentration analytics
-   > for the radar-databricks demo. All data is synthetic. The portfolio
-   > is ~50,000 policies across ~150 postcode districts, weighted to UK
-   > population centres. Use this space to ask portfolio-level questions:
-   > where the biggest exposures are, how flood risk concentrates by
-   > region, and what loss looks like under named flood scenarios.
-   > Use postcode_district as the geographic key. flood_zone takes
-   > values '1', '2', '3a', '3b' (3a/3b = flood zone 3, the high-risk
-   > tier). Region is the ITL1-style UK label.
+To redeploy from scratch (e.g. on a fresh workspace) or rebuild the curated
+content if it gets out of sync:
 
-6. **Instructions / system prompt** (paste verbatim):
-   > When asked about flood concentration: prefer the gold.flood_concentration
-   > table (one row per postcode district) over silver.priced_book_output
-   > (one row per policy) — concentration is a district-level concept.
-   > When asked about scenarios, use gold.scenario_results. When the user
-   > asks about an individual policy, use silver.priced_book_output.
-   > Express monetary values in £ millions when total exposure exceeds
-   > £10m. Round flood scores to integers.
-
-7. **Sample questions** — paste each on its own line:
-   ```
-   Where is our biggest flood exposure?
-   What's our total exposure in postcodes with flood score above 70?
-   How does flood concentration compare across regions?
-   Which postcode districts carry the most exposure under flood zones 3a and 3b?
-   Which district has the highest sum_insured concentrated in flood zone 3?
-   How much sum insured is in postcodes where flood_score is greater than 70?
-   What's the top 10 by expected loss?
-   How many policies are in the Thames Valley 1-in-100 scenario?
-   What is the scenario loss for each named flood scenario?
-   ```
-
-8. **Test** the headline three before walking on stage. If any answer comes
-   back wrong, iterate the instructions block until they're solid. Once you
-   like the answers, **save the space ID** and add the URL to the table at
-   the top of this document.
-
-To re-emit the configuration in case any of the text above gets stale:
 ```bash
+# Create + populate from scratch
 python3 scripts/create_genie_space.py \
   --catalog lr_serverless_aws_us_catalog \
-  --bronze radar_bronze --silver radar_silver --gold radar_gold
+  --bronze radar_bronze --silver radar_silver --gold radar_gold \
+  --warehouse-id ab79eced8207d29b \
+  --parent-path /Workspace/Users/laurence.ryszka@databricks.com \
+  --profile DEFAULT
+
+# Or, add curated content to an existing empty space
+python3 scripts/create_genie_space.py \
+  --catalog lr_serverless_aws_us_catalog \
+  --bronze radar_bronze --silver radar_silver --gold radar_gold \
+  --space-id 01f1487cc0bc1af1b06e394546b95181 \
+  --profile DEFAULT
 ```
+
+**Test the headline three questions before walking on stage:**
+1. *"Where is our biggest flood exposure?"*
+2. *"What's our total exposure in postcodes with flood score above 70?"*
+3. *"How does flood concentration compare across regions?"*
+
+If any answer is wrong, the instructions can be edited live in the Genie UI
+(*Settings → Instructions* on the space).
 
 ---
 
