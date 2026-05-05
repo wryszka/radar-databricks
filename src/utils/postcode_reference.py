@@ -1,8 +1,14 @@
+# Databricks notebook source
 # Postcode-district reference data for the radar-databricks demo.
 #
 # Synthesised from real UK geography but with no licensed source data — every
 # district is a real UK postcode district, but population weights, flood scores,
 # and lat/long centroids are demo-grade approximations.
+#
+# Imported via:
+#   - `%run ../utils/postcode_reference` from a Databricks notebook
+#   - `from postcode_reference import POSTCODE_DISTRICTS` from a local Python
+#     script (the header is just a magic comment; the file is valid Python).
 #
 # Schema:
 #   district          str   UK postcode district (e.g. "SW1", "M1", "BS1")

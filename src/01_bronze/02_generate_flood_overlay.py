@@ -24,11 +24,7 @@ fqn = f"{catalog}.{schema}.flood_overlay"
 
 # COMMAND ----------
 
-import sys, os
-nb_dir = os.path.dirname(os.path.abspath(globals().get("__file__", ".")))
-sys.path.insert(0, os.path.join(nb_dir, "..", "utils"))
-
-from postcode_reference import POSTCODE_DISTRICTS  # noqa: E402
+# MAGIC %run ../utils/postcode_reference
 
 # COMMAND ----------
 

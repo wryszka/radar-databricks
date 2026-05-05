@@ -25,14 +25,7 @@ fqn = f"{catalog}.{schema}.property_book"
 
 # COMMAND ----------
 
-import sys, os
-# In Databricks the bundle path is /Workspace/.../src/01_bronze — utils sit
-# alongside in src/utils. Add the parent so the import works in both Databricks
-# and local-notebook contexts.
-nb_dir = os.path.dirname(os.path.abspath(globals().get("__file__", ".")))
-sys.path.insert(0, os.path.join(nb_dir, "..", "utils"))
-
-from postcode_reference import POSTCODE_DISTRICTS  # noqa: E402
+# MAGIC %run ../utils/postcode_reference
 
 # COMMAND ----------
 

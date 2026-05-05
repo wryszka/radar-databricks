@@ -4,16 +4,16 @@ bundle:
 variables:
   catalog_name:
     description: Unity Catalog name for all demo tables
-    default: radar_databricks_demo
+    default: lr_serverless_aws_us_catalog
   bronze_schema:
     description: Schema for raw ingest tables
-    default: bronze
+    default: radar_bronze
   silver_schema:
     description: Schema for enriched / Radar-output tables
-    default: silver
+    default: radar_silver
   gold_schema:
     description: Schema for portfolio aggregations + scenario results
-    default: gold
+    default: radar_gold
 
 # ──────────────────────────────────────────────────────────────────────────────
 # WORKSPACE: To deploy, set host + profile below or pass on the CLI:
@@ -25,8 +25,8 @@ variables:
 # ──────────────────────────────────────────────────────────────────────────────
 
 workspace:
-  # host: https://YOUR-WORKSPACE.cloud.databricks.com
-  # profile: DEFAULT
+  host: https://fevm-lr-serverless-aws-us.cloud.databricks.com
+  profile: DEFAULT
 
 sync:
   exclude:

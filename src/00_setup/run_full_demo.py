@@ -80,6 +80,17 @@ print("✓ gold.scenario_results")
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ## Stage 5 — Apply metadata (table + column comments + tags)
+# MAGIC Done at the end so comments land on real tables, not on no-op skips.
+
+# COMMAND ----------
+
+dbutils.notebook.run("apply_metadata", 600, base_params)
+print("✓ governance metadata applied")
+
+# COMMAND ----------
+
 print(f"""
 ═══════════════════════════════════════════════════════════════
   Full demo pipeline complete.

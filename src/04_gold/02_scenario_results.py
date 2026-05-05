@@ -24,11 +24,7 @@ out_table    = f"{catalog}.{gold}.scenario_results"
 
 # COMMAND ----------
 
-import sys, os
-nb_dir = os.path.dirname(os.path.abspath(globals().get("__file__", ".")))
-sys.path.insert(0, os.path.join(nb_dir, "..", "utils"))
-
-from postcode_reference import FLOOD_SCENARIOS  # noqa: E402
+# MAGIC %run ../utils/postcode_reference
 
 # COMMAND ----------
 
@@ -39,7 +35,7 @@ from pyspark.sql.types import (StructType, StructField, StringType,
 priced = spark.table(priced_table).select(
     "policy_id", "postcode_district", "sum_insured",
     "premium", "expected_loss",
-).cache()
+)
 
 scenario_rows = []
 detail_rows   = []   # per-(scenario, district) drill-down

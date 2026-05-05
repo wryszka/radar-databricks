@@ -91,6 +91,7 @@ databricks bundle run run_full_demo -p YOUR_PROFILE
 ├── databricks.yml              # bundle config (catalog + schemas as variables)
 ├── README.md                   # this file
 ├── DEMO_SCRIPT.md              # 5-minute roleplay script (Laurence + Connor)
+├── DEMO_DAY.md                 # operational runbook — URLs, click order, recovery
 ├── SCHEMA_HANDOFF.md           # input/output schema contract at the Radar boundary
 ├── resources/                  # one job per stage + the orchestrator
 │   ├── setup_job.yml
